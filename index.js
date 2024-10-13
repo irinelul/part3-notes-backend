@@ -1,76 +1,97 @@
 const express = require('express')
+const morgan = require('morgan')
 const app = express()
 
-let notes = [
-  {
-    id: 1,
-    content: "HTML is easy",
-    date: "2022-01-10T17:30:31.098Z",
-    important: true
+app.use(express.json())
+
+morgan.token('body', (req) => JSON.stringify(req.body));
+morgan.token('bodyLength', (req) =>  (JSON.stringify(req.body)).length) ;
+
+app.use(morgan(':method :url  status :status - :response-time ms content: :body :bodyLength Length'))
+
+let persons = [
+  { 
+    "id": "1",
+    "name": "Arto Hellas", 
+    "number": "040-123456"
   },
-  {
-    id: 2,
-    content: "Browser can execute only Javascript",
-    date: "2022-01-10T18:39:34.091Z",
-    important: false
+  { 
+    "id": "2",
+    "name": "Ada Lovelace", 
+    "number": "39-44-5323523"
   },
-  {
-    id: 3,
-    content: "GET and POST are the most important methods of HTTP protocol",
-    date: "2022-01-10T19:20:14.298Z",
-    important: true
+  { 
+    "id": "3",
+    "name": "Dan Abramov", 
+    "number": "12-43-234345"
+  },
+  { 
+    "id": "4",
+    "name": "Mary Poppendieck", 
+    "number": "39-23-6423122"
   }
 ]
 
-app.use(express.json())
 
 app.get('/', (req, res) => {
   res.send('<h1>Hello World!</h1>')
 })
 
 const generateId = () => {
-  const maxId = notes.length > 0
-    ? Math.max(...notes.map(n => n.id))
-    : 0
-  return maxId + 1
+  const maxId = Math.floor(Math.random() * 5555);
+  return String(maxId) 
 }
 
-app.post('/api/notes', (request, response) => {
-  const body = request.body
 
-  if (!body.content) {
+
+
+
+
+
+app.post('/api/persons', (request, response) => {
+  const body = request.body
+  console.log(body.name.toLowerCase)
+  if (!body.name || !body.number) {
     return response.status(400).json({ 
-      error: 'content missing' 
+      error: 'content missing. We require both body and number to be populated.' 
     })
   }
-
+  if (persons.find(p=>p.name.toLowerCase()===body.name.toLowerCase())) {
+    return response.status(400).json({ 
+      error: `${body.name} already exists in the phonebook. 
+      The name must be unique.`
+    })
+  } 
   const note = {
-    content: body.content,
-    important: body.important || false,
-    date: new Date(),
+    name: body.name,
+    number: String(body.number),
     id: generateId(),
   }
 
-  notes = notes.concat(note)
+  persons = persons.concat(note)
 
   response.json(note)
 })
 
-app.get('/api/notes', (req, res) => {
-  res.json(notes)
+app.get('/api/persons', (req, res) => {
+  res.json(persons)
 })
 
-app.delete('/api/notes/:id', (request, response) => {
-  const id = Number(request.params.id)
-  notes = notes.filter(note => note.id !== id)
+app.get('/info', (req, res) => {
+   res.send(`Phonebook has info for ${persons.length} persons <br>
+    Info is correct as of  ${new Date().toISOString()}`   )
+})
 
+
+app.delete('/api/persons/:id', (request, response) => {
+  const id = String(request.params.id)
+  persons = persons.filter(note => note.id !== id)
   response.status(204).end()
 })
 
-app.get('/api/notes/:id', (request, response) => {
-  const id = Number(request.params.id)
-  const note = notes.find(note => note.id === id)
-
+app.get('/api/persons/:id', (request, response) => {
+  const id = String(request.params.id)
+  const note = persons.find(person => person.id === id)
   if (note) {
     response.json(note)
   } else {
